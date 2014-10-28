@@ -4,46 +4,37 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.core.util.Base64;
-
-//import org.apache.commons.codec.binary.Base64;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import javax.ws.rs.core.MediaType;
+import java.util.Properties;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
-/**
- * Jersey REST client generated for REST resource:_1 [rest/search/query=p53]<br>
- * USAGE:
- * <pre>
- *        Proxy client = new Proxy();
- *        Object response = client.XXX(...);
- *        // do whatever with response
- *        client.close();
- * </pre>
- *
- * @author Marcos Arruda; Gustavo Baladão; Jonatha Daguerre
- */
 public class Proxy {
 
     private WebResource webResource;
     private Client client;
-    private static final String BASE_URI = "http://192.168.0.205/WcfContent/WcfContent.svc/CONTENT";
+    private String BASE_URI;   
     public boolean webSericeOnLine;
 
-    public Proxy() {
+    public static Properties getProp() throws IOException {
+        Properties props = new Properties();
+        String caminhoProproedades;// = Proxy.class.getResource( File.separator + "propriedades" + File.separator + "dados.properties").getPath();
+        caminhoProproedades = System.getProperty("user.dir") + File.separator + "src" + File.separator + "propriedades" + File.separator + "dados.properties";
+        FileInputStream file = new FileInputStream(caminhoProproedades);
+        props.load(file);
+        return props;
+    }
+
+    public Proxy() throws IOException {
+        BASE_URI = getProp().getProperty("prop.server.endereco");        
         webSericeOnLine = false;
         com.sun.jersey.api.client.config.ClientConfig config = new com.sun.jersey.api.client.config.DefaultClientConfig();
         client = Client.create(config);
@@ -58,7 +49,7 @@ public class Proxy {
         ClientResponse clientResponse = webResource.path(java.text.MessageFormat.format("/{0}", new Object[]{q})).get(ClientResponse.class);
         return clientResponse.getEntity(String.class);
     }
-
+    
     public String getResultPut(String q, String ChaveAcesso, ParametrosProxy listaCampos[]) {
 
         String http = java.text.MessageFormat.format("{1}/{0}", q, BASE_URI);
@@ -74,6 +65,7 @@ public class Proxy {
             urlConnection.setConnectTimeout(10000);
             urlConnection.setReadTimeout(10000);
             urlConnection.setRequestProperty("Content-Type", "application/json");
+            urlConnection.setRequestProperty("Accept", "application/json");
             urlConnection.setRequestProperty("Host", "content.softwareneutron.com");
             //urlConnection.setRequestProperty("Host", "android.schoolportal.gr");
             urlConnection.connect();

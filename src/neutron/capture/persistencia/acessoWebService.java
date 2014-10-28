@@ -11,8 +11,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import neutron.capture.negocio.RetornoUploadFile;
+import static neutron.capture.persistencia.Proxy.getProp;
 
 /**
  *
@@ -36,10 +36,15 @@ public class acessoWebService {
     }
 
     public RetornoUploadFile UploadFile(String ChaveAcesso, String Base64File) throws IOException {
+        int TamanhoPacote = Integer.parseInt(getProp().getProperty("prop.client.tamanho.pacote"));
+        if (TamanhoPacote > 0) {
+            TamanhoPacote = TamanhoPacote * 1024; //Converte para bytes
+            TamanhoPacote = TamanhoPacote * 8; //Converte para bites
+            TamanhoPacote = TamanhoPacote / 7; //Recupera a quantidade máxima de caracteres
+        }
         p = new Proxy();
         String resultado;
         String q = "jsonRecebePagina";
-        String b64 = encodeFileToBase64Binary(Base64File);
         ParametrosProxy lista[] = new ParametrosProxy[7];
         lista[0] = new ParametrosProxy();
         lista[1] = new ParametrosProxy();
@@ -56,18 +61,49 @@ public class acessoWebService {
         lista[2].valorCampo = "1";
         lista[3].nomeCampo = "Extensao";
         lista[3].valorCampo = "TIF";
-        lista[4].nomeCampo = "Base64File";
-        lista[4].valorCampo = b64;
-        lista[5].nomeCampo = "FinalPagina";
-        lista[5].valorCampo = "True";
-        lista[6].nomeCampo = "InicioPagina";
-        lista[6].valorCampo = "True";
 
-        resultado = p.getResultPut(q, ChaveAcesso, lista);
-        resultado = resultado.substring(61);
-        resultado = resultado.substring(0, resultado.length() - 1);
+        String b64 = encodeFileToBase64Binary(Base64File);
         Gson gson = new Gson();
-        RetornoUploadFile re = gson.fromJson(resultado, RetornoUploadFile.class);
+        RetornoUploadFile re = null;
+        int TamanhBase64 = b64.length();
+        if (TamanhBase64 > TamanhoPacote) {            
+            for (int i = TamanhoPacote; i < TamanhBase64 + TamanhoPacote; i += TamanhoPacote) {
+                int tempInicio = i - TamanhoPacote;
+                if (i > TamanhBase64) {
+                    lista[5].nomeCampo = "FinalPagina";
+                    lista[5].valorCampo = "TRUE";
+                    lista[4].valorCampo = b64.substring(tempInicio);
+                } else {
+                    lista[5].nomeCampo = "FinalPagina";
+                    lista[5].valorCampo = "FALSE";                    
+                    lista[4].valorCampo = b64.substring(tempInicio, TamanhoPacote);
+                }
+                if (i == TamanhoPacote) {
+                    lista[6].nomeCampo = "InicioPagina";
+                    lista[6].valorCampo = "TRUE";
+                } else {
+                    lista[6].nomeCampo = "InicioPagina";
+                    lista[6].valorCampo = "FALSE";
+                }
+                lista[4].nomeCampo = "Base64File";                                
+                resultado = p.getResultPut(q, ChaveAcesso, lista);
+                resultado = resultado.substring(26).trim();
+                resultado = resultado.substring(0, resultado.length() - 1);
+                re = gson.fromJson(resultado, RetornoUploadFile.class);
+            }
+        } else {
+            lista[5].nomeCampo = "FinalPagina";
+            lista[5].valorCampo = "TRUE";
+            lista[6].nomeCampo = "InicioPagina";
+            lista[6].valorCampo = "TRUE";
+            lista[4].nomeCampo = "Base64File";
+            lista[4].valorCampo = b64;
+            resultado = p.getResultPut(q, ChaveAcesso, lista);
+            resultado = resultado.substring(27).trim();
+            resultado = resultado.substring(0, resultado.length() - 1);
+            re = gson.fromJson(resultado, RetornoUploadFile.class);
+        }
+
         return re;
     }
 
